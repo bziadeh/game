@@ -5,6 +5,7 @@ using UnityEngine;
 using TMPro;
 using Unity.Netcode;
 using UnityEngine.UI;
+using UnityEditor;
 
 public class CharacterCreator : MonoBehaviour
 {
@@ -13,9 +14,12 @@ public class CharacterCreator : MonoBehaviour
     private Dictionary<Button, int> objToSlot = new();
 
     private int selectedCharacter = 0;
-    private GameObject character; 
+    private GameObject character;
 
+    [SerializeField] private Canvas canvas;
+    [SerializeField] private QueueManager queueManager;
     [SerializeField] private Transform characterLocation;
+    [SerializeField] private GameObject startQueuePanel;
     [SerializeField] private GameObject characterSettingsPanel;
     [SerializeField] private Transform characterSettingsParent;
     [SerializeField] private GameObject[] characterSlots;
@@ -27,6 +31,7 @@ public class CharacterCreator : MonoBehaviour
     public struct Character
     {
         public GameObject prefab;
+        public uint prefabHash;
 
         public FixedString32Bytes name;
         public FixedString32Bytes role;
@@ -38,6 +43,8 @@ public class CharacterCreator : MonoBehaviour
     private AudioSource clickSound;
     private void Start()
     {
+        // todo: load character from database
+
         clickSound = GetComponent<AudioSource>();
         UpdateCharacter();
         
@@ -55,6 +62,16 @@ public class CharacterCreator : MonoBehaviour
             }
             btn.onClick.AddListener(delegate { SelectCharacter(btn); });
         }
+
+        startQueuePanel.GetComponent<Button>().onClick.AddListener(() =>
+        {
+            if(selectedCharacter < characters.Count)
+            {
+                Debug.Log("Queueing Player...");
+                canvas.enabled = false;
+                queueManager.Queue(this.character, characters[selectedCharacter]);
+            }
+        });
     }
 
     private void UpdateCharacter()
@@ -95,11 +112,13 @@ public class CharacterCreator : MonoBehaviour
             this.character = Instantiate(character.prefab, characterLocation);
             this.character.SetActive(true);
             characterSettingsPanel.SetActive(false);
+            startQueuePanel.SetActive(true);
         }    
         else
         {
             characterName.text = "Character Name";
             role.value = 0;
+            startQueuePanel.SetActive(false);
             characterSettingsPanel.SetActive(true);
             UpdateCharacter();
         }
@@ -119,18 +138,30 @@ public class CharacterCreator : MonoBehaviour
             string name = characterName.text;
             string className = role.options[role.value].text;
 
+            // update the slot text on the left side of the screen
             TMP_Text text = characterSlot.transform.GetComponentInChildren<TMP_Text>();
             text.text = name + " Level 1 " + className;
 
             Character character = new();
+            // experience
             character.currentLevel = 0;
             character.currentExperience = 0.0f;
+
+            // name and role
             character.name = characterName.text;
             character.role = className;
+
+            // prefab data
             character.prefab = Instantiate(this.character);
             character.prefab.SetActive(false);
+            character.prefabHash = (uint)new SerializedObject(character.prefab.GetComponent<NetworkObject>()).FindProperty("GlobalObjectIdHash").intValue;
+
+            // add our character and save to database
             characters.Add(character);
+
+            // update panels
             characterSettingsPanel.SetActive(false);
+            startQueuePanel.SetActive(true);
         }
     }
 
