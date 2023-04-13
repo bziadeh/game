@@ -13,6 +13,7 @@ public class PlayerRotate : MonoBehaviour {
 
     //Rotation Value
     float yRotate = 0.0f;
+    bool newCamera = true;
 
     void Start() {
         // Lock cursor to the center of the screen
@@ -20,8 +21,8 @@ public class PlayerRotate : MonoBehaviour {
         Cursor.visible = false;
     }
 
-    void Update() {
-
+    void Update() 
+    {
         // Rotate X view
         float horizontalRotation = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
         objectToRotate.transform.Rotate(0, horizontalRotation, 0);

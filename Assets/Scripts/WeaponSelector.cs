@@ -5,7 +5,7 @@ using System.Linq;
 
 public class WeaponSelector : MonoBehaviour
 {
-    public GameObject weapon;
+    public GameObject OneHandedWeapon;
 
     private MeshRenderer meshRenderer;
     private MeshFilter meshFilter;
@@ -41,20 +41,14 @@ public class WeaponSelector : MonoBehaviour
 
                 weapons.Add(wep);
             }
-            meshRenderer = weapon.GetComponent<MeshRenderer>();
-            meshFilter = weapon.GetComponent<MeshFilter>();
+            meshRenderer = OneHandedWeapon.GetComponent<MeshRenderer>();
+            meshFilter = OneHandedWeapon.GetComponent<MeshFilter>();
         }
         else
         {
             // must be same length
             print("[Error] Materials and meshes not same length");
         }
-    }
-
-    // Start is called before the first frame update
-    void Start()
-    {
-    
     }
 
     // Update is called once per frame

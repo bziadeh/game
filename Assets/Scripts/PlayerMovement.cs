@@ -1,6 +1,7 @@
+using Unity.Netcode;
 using UnityEngine;
 
-public class PlayerMovement : MonoBehaviour {
+public class PlayerMovement : NetworkBehaviour {
 
     public float speed = 6.0f;
     public float jumpSpeed = 8.0f;
@@ -17,8 +18,7 @@ public class PlayerMovement : MonoBehaviour {
     public float soundDelay = 0.5f;
 
 	private bool jumping = false;
-    private float lastPlay;
-    public bool firstPerson;
+    public bool firstPerson = false;
 
     public Camera playerCamera;
     public Transform firstPersonCameraLocation;
@@ -26,6 +26,16 @@ public class PlayerMovement : MonoBehaviour {
 
     [SerializeField] private LayerMask layerMaskFirstPerson;
     [SerializeField] private LayerMask layerMaskThirdPerson;
+    
+    [SerializeField] private AvatarMask upperBodyMoving;
+    [SerializeField] private AvatarMask upperBodyStill;
+
+    public float minAngle = -45.0f;
+    public float maxAngle = 45.0f;
+
+    //Rotation Value
+    float yRotate = 0.0f;
+    bool newCamera = true;
 
     void Start() {
         controller = GetComponent<CharacterController>();
@@ -43,15 +53,17 @@ public class PlayerMovement : MonoBehaviour {
 
     private void Awake()
     {
-        lastPlay = Time.time;
-
         // first person init settings
-        firstPerson = true;
-        playerCamera.cullingMask = layerMaskFirstPerson;
+        playerCamera.cullingMask = layerMaskThirdPerson;
     }
 
     private void Update()
     {
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
+
+        HandleRotation();
+
         if (Input.GetKeyDown(KeyCode.V))
         {
             UpdateCamera();
@@ -60,9 +72,25 @@ public class PlayerMovement : MonoBehaviour {
         if (controller.isGrounded)
         {
             // Get input for movement
-            float horizontal = Input.GetAxis("Horizontal");
-            float vertical = Input.GetAxis("Vertical");
+            bool moving = Mathf.Abs(horizontal) > 0.0f || Mathf.Abs(vertical) > 0.0f;
+            animator.SetBool("isMoving", moving);
 
+            int combatLayers = 2;
+            int combatLayerStart = 1;
+
+            bool animating = false;
+            for(int i = combatLayerStart; i <= combatLayers; i++)
+            {
+                AnimatorStateInfo info = animator.GetCurrentAnimatorStateInfo(i);
+                if(animating = info.IsName("Attack") || info.IsName("Attack 2"))
+                {
+                    animating = true;
+                    break;
+                }
+            }
+            animator.SetBool("Animating", animating);
+                  
+            Vector2 input = Vector2.ClampMagnitude(new Vector2(horizontal, vertical), 1f);
             if (jumping)
             {
                 // just finished jumping make sure
@@ -72,7 +100,7 @@ public class PlayerMovement : MonoBehaviour {
             }
 
             // Calculate movement direction based on input
-            moveDirection = new Vector3(horizontal, 0, vertical);
+            moveDirection = new Vector3(input.x, 0, input.y);
             moveDirection = transform.TransformDirection(moveDirection);
             moveDirection *= speed;
 
@@ -82,6 +110,7 @@ public class PlayerMovement : MonoBehaviour {
             // Jump if the jump button is pressed
             if (Input.GetButton("Jump"))
             {
+                animator.SetBool("Strafing", false);
                 animator.SetTrigger("Jump");
                 moveDirection.y = jumpSpeed;
                 jumping = true;
@@ -93,6 +122,24 @@ public class PlayerMovement : MonoBehaviour {
 
         // Move the character controller
         controller.Move(moveDirection * Time.deltaTime);
+    }
+
+    void HandleRotation()
+    {
+        // Rotate X view
+        float horizontalRotation = Input.GetAxis("Mouse X") * mouseSensitivity * Time.deltaTime;
+        transform.Rotate(0, horizontalRotation, 0);
+
+        //Rotate Y view if 1st Person
+        if (firstPerson)
+        {
+            Transform cam = playerCamera.transform;
+
+            yRotate += Input.GetAxis("Mouse Y") * mouseSensitivity * Time.deltaTime * -1;
+            yRotate = Mathf.Clamp(yRotate, minAngle, maxAngle);
+
+            playerCamera.transform.eulerAngles = new Vector3(yRotate, cam.eulerAngles.y, cam.eulerAngles.z);
+        }
     }
 
     void UpdateCamera()
