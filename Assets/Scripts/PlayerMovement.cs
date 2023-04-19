@@ -1,8 +1,29 @@
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PlayerMovement : NetworkBehaviour {
 
+    // Crosshair
+    public bool lockCursor = true;
+    public bool crosshair = true;
+    public Sprite crosshairImage;
+    public Color crosshairColor = Color.white;
+
+    // Internal Variables
+    private float yaw = 0.0f;
+    private float pitch = 0.0f;
+    private Image crosshairObject;
+
+    public bool enableZoom = true;
+    public bool holdToZoom = false;
+    public KeyCode zoomKey = KeyCode.Mouse1;
+    public float zoomFOV = 30f;
+    public float zoomStepTime = 5f;
+
+    // Internal Variables
+    private bool isZoomed = false;
+    private bool isFlying = false;
     public float speed = 6.0f;
     public float jumpSpeed = 8.0f;
     public float gravity = 20.0f;
@@ -41,12 +62,18 @@ public class PlayerMovement : NetworkBehaviour {
 
     private float startPitch;
     private KeyCode lastKey = KeyCode.None;
+    private float startFov;
 
     public override void OnNetworkSpawn()
     {
         if (!IsOwner) return;
+        crosshairObject = GetComponentInChildren<Image>();
+
+        // crosshair setup
+        HandleCrosshairSettings();
 
         playerCamera.enabled = true;
+        startFov = playerCamera.fieldOfView; 
         controller = GetComponent<CharacterController>();
 
         rb = GetComponent<Rigidbody>();
@@ -72,6 +99,7 @@ public class PlayerMovement : NetworkBehaviour {
         float horizontal = Input.GetAxis("Horizontal");
         float vertical = Input.GetAxis("Vertical");
 
+        HandleCrosshairInput();
         HandleRotation();
 
         if (Input.GetKeyDown(KeyCode.V))
@@ -124,7 +152,7 @@ public class PlayerMovement : NetworkBehaviour {
 
             if(playerAudioSource.isPlaying && playerAudioSource.clip == footstepSound && lastKey != GetCurrentKey())
             {
-                float diff = (Random.Range(0.0f, 1.0f) >= .5 ? 1 : -1) * Random.Range(0.05f, 0.1f);
+                float diff = (Random.Range(0.0f, 1.0f) >= .5 ? 1 : -1) * Random.Range(0.01f, 0.05f);
                 playerAudioSource.pitch = startPitch + diff;
             }
 
@@ -220,6 +248,68 @@ public class PlayerMovement : NetworkBehaviour {
 
             playerCamera.transform.position = firstPersonCameraLocation.position;
             print("Going into First Person mode");
+        }
+    }
+
+    private void HandleCrosshairSettings()
+    {
+        if (lockCursor)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+        }
+
+        if (crosshair)
+        {
+            crosshairObject.sprite = crosshairImage;
+            crosshairObject.color = crosshairColor;
+        }
+        else
+        {
+            crosshairObject.gameObject.SetActive(false);
+        }
+    }
+
+    private void HandleCrosshairInput()
+    {
+        if (enableZoom)
+        {
+            // Changes isZoomed when key is pressed
+            // Behavior for toogle zoom
+            if (Input.GetKeyDown(zoomKey) && !holdToZoom)
+            {
+                if (!isZoomed)
+                {
+                    isZoomed = true;
+                }
+                else
+                {
+                    isZoomed = false;
+                }
+            }
+
+            // Changes isZoomed when key is pressed
+            // Behavior for hold to zoom
+            if (holdToZoom)
+            {
+                if (Input.GetKeyDown(zoomKey))
+                {
+                    isZoomed = true;
+                }
+                else if (Input.GetKeyUp(zoomKey))
+                {
+                    isZoomed = false;
+                }
+            }
+
+            // Lerps camera.fieldOfView to allow for a smooth transistion
+            if (isZoomed)
+            {
+                playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, zoomFOV, zoomStepTime * Time.deltaTime);
+            }
+            else if (!isZoomed)
+            {
+                playerCamera.fieldOfView = Mathf.Lerp(playerCamera.fieldOfView, startFov, zoomStepTime * Time.deltaTime);
+            }
         }
     }
 }
