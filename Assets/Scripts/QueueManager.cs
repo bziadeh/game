@@ -1,27 +1,12 @@
 using Unity.Netcode;
 using UnityEngine;
 
-public class QueueManager : NetworkBehaviour
+public class QueueManager : MonoBehaviour
 {
 
     [SerializeField] private Transform spawnLocation;
 
-    public void Queue(GameObject menuCharacter, CharacterCreator.Character character)
-    {
-        Destroy(menuCharacter);
-
-        if (character.name.Equals("Brennan"))
-        {
-            StartServer(character.prefabHash);
-        }
-        else
-        {
-            // client
-            NetworkManager.Singleton.StartClient();
-        }
-    }
-
-    private void StartServer(uint prefabHash)
+    private void Start()
     {
         NetworkManager manager = NetworkManager.Singleton;
         manager.NetworkConfig.ConnectionApproval = true;
@@ -36,12 +21,27 @@ public class QueueManager : NetworkBehaviour
             // Your approval logic determines the following values
             response.Approved = true;
             response.CreatePlayerObject = true;
-            response.PlayerPrefabHash = prefabHash;
+            response.PlayerPrefabHash = System.BitConverter.ToUInt32(request.Payload);
             response.Position = spawnLocation.position;
             response.Rotation = spawnLocation.rotation;
             response.Pending = false;
         };
+    }
 
-        manager.StartHost();
+    public void Queue(GameObject menuCharacter, CharacterCreator.Character character)
+    {
+        Destroy(menuCharacter);
+
+        NetworkManager.Singleton.NetworkConfig.ConnectionData = System.BitConverter.GetBytes(character.prefabHash);
+
+        if (character.name.Equals("Brennan"))
+        {
+            NetworkManager.Singleton.StartHost();
+        }
+        else
+        {
+            // client
+            NetworkManager.Singleton.StartClient();
+        }
     }
 }

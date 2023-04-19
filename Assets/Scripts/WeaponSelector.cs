@@ -2,8 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using Unity.Netcode;
 
-public class WeaponSelector : MonoBehaviour
+public class WeaponSelector : NetworkBehaviour
 {
     public GameObject OneHandedWeapon;
 
@@ -13,8 +14,8 @@ public class WeaponSelector : MonoBehaviour
     [SerializeField] private Material[] materials;
     [SerializeField] private Mesh[] meshes;
 
-    private int currentWeapon = 0;
     private List<Weapon> weapons;
+    private NetworkVariable<int> itemSelection = new(default, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
     public struct Weapon
     {
@@ -22,8 +23,10 @@ public class WeaponSelector : MonoBehaviour
         public Mesh mesh;
     }
 
-    private void Awake()
+    public override void OnNetworkSpawn()
     {
+        itemSelection.OnValueChanged += (oldValue, newValue) => UpdateWeaponClientRpc(newValue);
+
         // empty weapons list
         weapons = new List<Weapon>();
 
@@ -54,19 +57,25 @@ public class WeaponSelector : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (!IsOwner) return;
+
         if(Input.GetKeyDown(KeyCode.Tab))
         {
-            currentWeapon = (currentWeapon == weapons.Count - 1) ? 0 : currentWeapon + 1;
-
-            // find the new weapon
-            Weapon newWeapon = weapons.ElementAt(currentWeapon);
-            if(newWeapon.material != null)
-            {
-                // some weapons may not have materials
-                meshRenderer.materials = new Material[] { newWeapon.material };
-            }
-
-            meshFilter.mesh = newWeapon.mesh;
+            itemSelection.Value = (itemSelection.Value == weapons.Count - 1) ? 0 : itemSelection.Value + 1;
         }
+    }
+    
+    [ClientRpc]
+    private void UpdateWeaponClientRpc(int currentWeapon)
+    {
+        // find the new weapon
+        Weapon newWeapon = weapons.ElementAt(currentWeapon);
+        if (newWeapon.material != null)
+        {
+            // some weapons may not have materials
+            meshRenderer.materials = new Material[] { newWeapon.material };
+        }
+
+        meshFilter.mesh = newWeapon.mesh;
     }
 }

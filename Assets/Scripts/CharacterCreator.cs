@@ -65,13 +65,27 @@ public class CharacterCreator : MonoBehaviour
 
         startQueuePanel.GetComponent<Button>().onClick.AddListener(() =>
         {
-            if(selectedCharacter < characters.Count)
-            {
-                Debug.Log("Queueing Player...");
-                canvas.enabled = false;
-                queueManager.Queue(this.character, characters[selectedCharacter]);
-            }
+            QueueCharacter();
         });
+
+
+        // Allow create character with enter key
+        if (Input.GetKeyDown(KeyCode.Return) && characterName.isFocused)
+        {
+            CreateCharacter();
+        }
+    }
+
+    private void QueueCharacter()
+    {
+        if (selectedCharacter < characters.Count)
+        {
+            Debug.Log("Queueing Player...");
+            canvas.enabled = false;
+
+            Character character = characters[selectedCharacter];
+            queueManager.Queue(this.character, character);
+        }
     }
 
     private void UpdateCharacter()
@@ -154,7 +168,9 @@ public class CharacterCreator : MonoBehaviour
             // prefab data
             character.prefab = Instantiate(this.character);
             character.prefab.SetActive(false);
-            character.prefabHash = (uint)new SerializedObject(character.prefab.GetComponent<NetworkObject>()).FindProperty("GlobalObjectIdHash").intValue;
+            character.prefabHash = character.prefab.GetComponent<CustomNetworkObject>().hashId;
+
+            // old method (uint)new SerializedObject(character.prefab.GetComponent<NetworkObject>()).FindProperty("GlobalObjectIdHash").intValue;
 
             // add our character and save to database
             characters.Add(character);
