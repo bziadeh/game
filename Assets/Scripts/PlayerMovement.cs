@@ -39,8 +39,8 @@ public class PlayerMovement : NetworkBehaviour {
     public AudioClip jumpSound;
     public float soundDelay = 0.5f;
     public float soundPlay = 0.0f;
-
-	private bool jumping = false;
+    
+    private bool jumping = false;
     public bool firstPerson = false;
 
     public Camera playerCamera;

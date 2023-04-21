@@ -57,9 +57,6 @@ public class PlayerCombat : NetworkBehaviour
         animator = GetComponent<ClientNetworkAnimator>();
         movement = GetComponent<PlayerMovement>();
 
-        // setup camera shaker
-        cameraShaker = camera.GetComponent<CameraShaker>();
-
         // setup init stance and aggro settings
         blocking = false;
 

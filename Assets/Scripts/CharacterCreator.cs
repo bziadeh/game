@@ -10,19 +10,23 @@ using UnityEditor;
 public class CharacterCreator : MonoBehaviour
 {
 
-    private List<Character> characters = new();
+    public List<Character> characters = new();
     private Dictionary<Button, int> objToSlot = new();
 
-    private int selectedCharacter = 0;
+    public bool inQueue = false;
+    public int selectedCharacter = 0;
+    public GameObject[] characterSlots;
+    public GameObject startQueuePanel;
     private GameObject character;
+    public PlayerNetwork network;
+
+    public GameObject leaveQueue;
+    public GameObject queueTimer;
 
     [SerializeField] private Canvas canvas;
-    [SerializeField] private QueueManager queueManager;
     [SerializeField] private Transform characterLocation;
-    [SerializeField] private GameObject startQueuePanel;
     [SerializeField] private GameObject characterSettingsPanel;
     [SerializeField] private Transform characterSettingsParent;
-    [SerializeField] private GameObject[] characterSlots;
     [SerializeField] private TMP_Dropdown role;
     [SerializeField] private TMP_InputField characterName;
     [SerializeField] private GameObject knightPrefab;
@@ -63,12 +67,6 @@ public class CharacterCreator : MonoBehaviour
             btn.onClick.AddListener(delegate { SelectCharacter(btn); });
         }
 
-        startQueuePanel.GetComponent<Button>().onClick.AddListener(() =>
-        {
-            QueueCharacter();
-        });
-
-
         // Allow create character with enter key
         if (Input.GetKeyDown(KeyCode.Return) && characterName.isFocused)
         {
@@ -76,16 +74,41 @@ public class CharacterCreator : MonoBehaviour
         }
     }
 
-    private void QueueCharacter()
+    public void QueueCharacter()
     {
         if (selectedCharacter < characters.Count)
         {
-            Debug.Log("Queueing Player...");
-            canvas.enabled = false;
-
             Character character = characters[selectedCharacter];
-            queueManager.Queue(this.character, character);
+
+            // hide other menu character during queue
+            for (int i = 0; i < characterSlots.Length; i++)
+            {
+                if (selectedCharacter != i) characterSlots[i].SetActive(false); // disable them :)
+            }
+
+            startQueuePanel.SetActive(false); // remove start queue panel
+            leaveQueue.SetActive(true); // add leave queue panel
+            queueTimer.SetActive(true); // add queue timer
+
+            Debug.Log("Prefab Hash: " + character.prefabHash);
+            network.CreateConnection(this.character, character.prefabHash, character.name.Equals("Brennan"));
         }
+    }
+
+    public void LeaveQueue()
+    {
+        // re-enable the other menu characters again
+        for (int i = 0; i < characterSlots.Length; i++)
+        {
+            if (selectedCharacter != i) characterSlots[i].SetActive(true);
+        }
+
+        leaveQueue.SetActive(false);
+        queueTimer.SetActive(false);
+        startQueuePanel.SetActive(true);
+
+        network.StopConnection();
+
     }
 
     private void UpdateCharacter()
